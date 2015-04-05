@@ -1,0 +1,5 @@
+services:
+    bushidoio_pdf.service:
+        class: BushidoIO\PDFBundle\Service\PDFService
+        calls:
+            - [ setContainer, [ @service_container ] ]
