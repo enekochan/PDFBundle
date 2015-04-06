@@ -59,13 +59,12 @@ bushidoio_pdf:
 ```
 Usage examples
 --------------
-You can transform any HTML string to PDF format with the `bushidoio_pdf.service`
-service:
+You can transform any HTML string to PDF with the `bushidoio_pdf` service:
 ``` php
 public function indexAction()
 {
     ...
-    $PDFService = $this->get('bushidoio_pdf.service');
+    $PDFService = $this->get('bushidoio_pdf');
     $html = '...';
     $pdf = $PDFService->createPDFFromHtml($html);
     ...
@@ -76,7 +75,7 @@ You can use Twig templates, or anything you like, to create the HTML string:
 public function indexAction()
 {
     ...
-    $PDFService = $this->get('bushidoio_pdf.service');
+    $PDFService = $this->get('bushidoio_pdf');
     $html = $this->get('twig')->render(
         'default/index.html.twig',
         array(
@@ -93,7 +92,7 @@ downloaded if returned in a controller action:
 ``` php
 public function indexAction()
 {
-    $PDFService = $this->get('bushidoio_pdf.service');
+    $PDFService = $this->get('bushidoio_pdf');
     $html = $this->get('twig')->render(
         'default/index.html.twig',
         array(
