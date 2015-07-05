@@ -2,13 +2,11 @@
 
 namespace BushidoIO\PDFBundle\Service;
 
-require_once __DIR__.'/../Lib/MPDF/mpdf.php';
-
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
-class PDFService extends \BushidoIO\PDFBundle\Lib\MPDF\mPDF implements ContainerAwareInterface
+class PDFService implements ContainerAwareInterface
 {
     protected $container;
     protected $tmp;
@@ -22,14 +20,14 @@ class PDFService extends \BushidoIO\PDFBundle\Lib\MPDF\mPDF implements Container
         $this->container = $container;
         $this->readConfiguration();
     }
-    
+
     private function readConfiguration()
     {
         $options = $this->container->getParameter('bushidoio_pdf');
         
         $this->tmp = $options['tmp'];
         $this->ttfFontDataPath = $options['ttffontdatapath'];
-        $mpdfCachePath = $this->container->getParameter("kernel.cache_dir") . DIRECTORY_SEPARATOR . 'mpdf';
+        $mpdfCachePath = $this->container->getParameter('kernel.cache_dir') . DIRECTORY_SEPARATOR . 'mpdf';
 
         // If provided path is empty, doesn't exist or is not writable use cache_dir
         if (empty($this->tmp) || !is_writable($this->tmp)) {
@@ -62,8 +60,10 @@ class PDFService extends \BushidoIO\PDFBundle\Lib\MPDF\mPDF implements Container
      * Create PDF document from HTML
      *
      * @param String $html HTML content to create PDF from
+     * @param String $filename Filename for the created PDF
+     * @return String PDF document
      */
-    public function createPDFFromHtml($html = '')
+    public function createPDFFromHtml($html = '', $filename = 'output.pdf')
     {
         if ($html === '') {
             $html = '<html><head></head><body></body></html>';
@@ -79,13 +79,12 @@ class PDFService extends \BushidoIO\PDFBundle\Lib\MPDF\mPDF implements Container
          * Only S is used at the momento
          */
         $destination = 'S';
-        // This will be ignored if destination S is indicated
-        $filename = 'output.pdf';
 
-        $this->mPDF();
-        $this->WriteHTML($html);
+        $reflection = new \ReflectionClass('\mPDF');
+        $mPDF = $reflection->newInstanceArgs();
+        $mPDF->WriteHTML($html);
 
-        return $this->Output($filename, $destination);
+        return $mPDF->Output($filename, $destination);
     }
 
     /**
@@ -93,6 +92,7 @@ class PDFService extends \BushidoIO\PDFBundle\Lib\MPDF\mPDF implements Container
      *
      * @param String $html HTML content to create PDF from
      * @param String $filename Output filename of the PDF file
+     * @return Response A Response instance
      */
     public function createResponse($html = '', $filename = 'output.pdf')
     {
