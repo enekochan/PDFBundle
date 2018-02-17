@@ -25,7 +25,7 @@ class Configuration implements ConfigurationInterface
 
         return $treeBuilder;
     }
-    
+
     /**
      * Add options to the configuration tree
      *
@@ -36,14 +36,14 @@ class Configuration implements ConfigurationInterface
         $node
             ->children()
                 ->scalarNode('tmp')
-                    ->defaultValue('')
+                    ->defaultNull()
                     ->info('TMP Path')
                     ->example('/var/tmp/')
                 ->end()
             ->end()
             ->children()
                 ->scalarNode('ttffontdatapath')
-                    ->defaultValue('')
+                    ->defaultNull()
                     ->info('TTF Font Data Path')
                     ->example('/var/ttffontdatapath/')
                 ->end()

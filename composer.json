@@ -2,7 +2,7 @@
     "name": "bushidoio/pdf-bundle",
     "type": "symfony-bundle",
     "description": "BushidoIOPDFBundle",
-    "keywords": ["PDF"],
+    "keywords": ["PDF", "symfony"],
     "homepage": "https://github.com/BushidoIO/PDFBundle",
     "license": "MIT",
     "authors": [
@@ -14,12 +14,12 @@
     "require": {
         "php": ">=5.3.2",
         "symfony/framework-bundle": "~2.3",
-        "mpdf/mpdf": "~6.0"
+        "mpdf/mpdf": "^7.0"
     },
     "target-dir" : "BushidoIO/PDFBundle",
     "autoload": {
         "psr-0": {
-        	"BushidoIO\\PDFBundle\\": ""
+            "BushidoIO\\PDFBundle\\": ""
         }
     },
     "extra": {

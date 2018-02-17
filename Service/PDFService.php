@@ -2,16 +2,20 @@
 
 namespace BushidoIO\PDFBundle\Service;
 
+use Mpdf\Mpdf;
+use Mpdf\MpdfException;
+use Mpdf\Output\Destination;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class PDFService implements ContainerAwareInterface
 {
     protected $container;
     protected $tmp;
     protected $ttfFontDataPath;
-    
+
     /**
      * {@inheritdoc}
      */
@@ -24,44 +28,33 @@ class PDFService implements ContainerAwareInterface
     private function readConfiguration()
     {
         $options = $this->container->getParameter('bushidoio_pdf');
-        
-        $this->tmp = $options['tmp'];
-        $this->ttfFontDataPath = $options['ttffontdatapath'];
-        $mpdfCachePath = $this->container->getParameter('kernel.cache_dir') . DIRECTORY_SEPARATOR . 'mpdf';
 
-        // If provided path is empty, doesn't exist or is not writable use cache_dir
-        if (empty($this->tmp) || !is_writable($this->tmp)) {
-            $this->tmp = $mpdfCachePath . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR;
+        if (!empty($options['tmp']) && is_writable($options['tmp'])) {
+            $this->tmp = $options['tmp'];
+            // Create it just in case
+            if(!is_null($this->tmp) && !file_exists($this->tmp)){
+                mkdir($this->tmp, 0755, true);
+            }
         }
-        // Create it just in case
-        if(!file_exists($this->tmp)){
-            mkdir($this->tmp, 0755, true);
-        }
-        
-        // If provided path is empty, doesn't exist or is not writable use cache_dir
-        if (empty($this->ttfFontDataPath) || !is_writable($this->ttfFontDataPath)) {
-            $this->ttfFontDataPath = $mpdfCachePath . DIRECTORY_SEPARATOR . 'ttffontdata' . DIRECTORY_SEPARATOR;
-        }
-        // Create it just in case
-        if(!file_exists($this->ttfFontDataPath)){
-            mkdir($this->ttfFontDataPath, 0755, true);
-        }
-        
-        // Set those paths in mPDF constants
-        if (!defined('_MPDF_TEMP_PATH')) {
-            define('_MPDF_TEMP_PATH', $this->tmp);
-        }
-        if (!defined('_MPDF_TTFONTDATAPATH')) {
-            define('_MPDF_TTFONTDATAPATH', $this->ttfFontDataPath);
+
+        if (!empty($options['ttffontdatapath']) && is_writable($options['ttffontdatapath'])) {
+            $this->tmp = $options['ttffontdatapath'];
+            // Create it just in case
+            if(!is_null($this->ttfFontDataPath) && !file_exists($this->ttfFontDataPath)){
+                mkdir($this->ttfFontDataPath, 0755, true);
+            }
         }
     }
-    
+
     /**
-     * Create PDF document from HTML
+     * Create a PDF document from an HTML string
      *
-     * @param String $html HTML content to create PDF from
-     * @param String $filename Filename for the created PDF
-     * @return String PDF document
+     * @param string $html HTML content to create the PDF document from
+     * @param string $filename Filename for the created PDF document
+     *
+     * @return string PDF document
+     *
+     * @throws MpdfException
      */
     public function createPDFFromHtml($html = '', $filename = 'output.pdf')
     {
@@ -71,32 +64,44 @@ class PDFService implements ContainerAwareInterface
 
         /**
          * Destination of the PDF
-         * I: Browser
-         * D: Browser and force download
-         * F: Save to $filename (may have full path)
-         * S: Return document as string
+         * Destination::INLINE ('I'): Browser
+         * Destination::DOWNLOAD ('D'): Browser and force download
+         * Destination::FILE ('F'): Save to $filename (may have full path)
+         * Destination::STRING_RETURN ('S'): Return document as string
          *
-         * Only S is used at the momento
+         * Only Destination::STRING_RETURN is used at the moment
          */
-        $destination = 'S';
+        $destination = Destination::STRING_RETURN;
 
-        $reflection = new \ReflectionClass('\mPDF');
-        $mPDF = $reflection->newInstanceArgs();
-        $mPDF->WriteHTML($html);
+        $config = array();
+        if (!is_null($this->tmp)) {
+            $config['tempDir'] = $this->tmp;
+        }
+        if (!is_null($this->ttfFontDataPath)) {
+            $config['fontDir'] = $this->tmp;
+        }
 
-        return $mPDF->Output($filename, $destination);
+        $mpdf = new Mpdf($config);
+        $mpdf->WriteHTML($html);
+
+        return $mpdf->Output($filename, $destination);
     }
 
     /**
      * Create a Response object with the PDF document from HTML
      *
-     * @param String $html HTML content to create PDF from
-     * @param String $filename Output filename of the PDF file
+     * @param string $html HTML content to create PDF from
+     * @param string $filename Output filename of the PDF file
+     *
      * @return Response A Response instance
      */
     public function createResponse($html = '', $filename = 'output.pdf')
     {
-        $content = $this->createPDFFromHtml($html);
+        try {
+            $content = $this->createPDFFromHtml($html);
+        } catch(MpdfException $e) {
+            throw new HttpException(500, $e->getMessage(), $e);
+        }
 
         if (trim($filename) === '') {
             $filename = 'output-' . date('Ymd_His') . '.pdf';
@@ -104,9 +109,9 @@ class PDFService implements ContainerAwareInterface
 
         $response = new Response();
         $response->headers->set('Content-Type', 'application/pdf');
-        $response->headers->set('Content-Disposition', 'attachment;filename="' . $filename . '"');
+        $response->headers->set('Content-Disposition', sprintf('attachment;filename="%s"', $filename));
         $response->setContent($content);
-        
+
         return $response;
     }
 }
